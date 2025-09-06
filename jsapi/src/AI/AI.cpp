@@ -52,8 +52,6 @@ AI::AI()
 
 ConversationNode *AI::findNode(const std::string &nodeId)
 {
-    if (nodeId.empty())
-        return nullptr;
     auto it = nodeMap.find(nodeId);
     return (it != nodeMap.end()) ? it->second.get() : nullptr;
 }
@@ -76,9 +74,6 @@ std::vector<ConversationNode> AI::getPathFromRoot(const std::string &nodeId)
 
 void AI::addNode(ConversationNode::ROLE role, std::string content)
 {
-    if (content.empty() && role != ConversationNode::ROLE_SYSTEM)
-        return;
-
     std::unique_lock<std::shared_mutex> stateLock(stateMutex);
     std::string nodeId = strUtils::randomId();
     ConversationNode *parent = findNode(currentNodeId);
@@ -92,14 +87,10 @@ void AI::addNode(ConversationNode::ROLE role, std::string content)
 
 bool AI::deleteNode(const std::string &nodeId)
 {
-    if (nodeId.empty() || nodeId == rootNodeId)
-        return false;
-
     std::unique_lock<std::shared_mutex> stateLock(stateMutex);
     ConversationNode *node = findNode(nodeId);
     if (!node)
         return false;
-
     ConversationNode *parent = findNode(node->parentId);
     if (parent)
     {
@@ -107,7 +98,6 @@ bool AI::deleteNode(const std::string &nodeId)
         if (it != parent->childIds.end())
             parent->childIds.erase(it);
     }
-
     nodeMap.erase(nodeId);
     if (currentNodeId == nodeId)
         currentNodeId = node->parentId;
@@ -118,9 +108,6 @@ bool AI::deleteNode(const std::string &nodeId)
 
 bool AI::switchNode(const std::string &nodeId)
 {
-    if (nodeId.empty())
-        return false;
-
     std::unique_lock<std::shared_mutex> stateLock(stateMutex);
     ConversationNode *node = findNode(nodeId);
     if (node)
@@ -133,9 +120,6 @@ bool AI::switchNode(const std::string &nodeId)
 
 std::vector<std::string> AI::getChildren(const std::string &nodeId)
 {
-    if (nodeId.empty())
-        return {};
-
     std::shared_lock<std::shared_mutex> stateLock(stateMutex);
     ConversationNode *node = findNode(nodeId);
     if (node)
@@ -181,9 +165,6 @@ std::vector<ConversationInfo> AI::getConversationList()
 
 void AI::createConversation(const std::string &title)
 {
-    if (title.empty())
-        return;
-
     std::lock_guard<std::mutex> conversationLock(conversationMutex);
     std::string newConversationId;
     conversationManager.createConversation(title, newConversationId);
@@ -203,9 +184,6 @@ void AI::createConversation(const std::string &title)
 
 void AI::loadConversation(const std::string &conversationId)
 {
-    if (conversationId.empty())
-        return;
-
     std::lock_guard<std::mutex> conversationLock(conversationMutex);
     std::unique_lock<std::shared_mutex> stateLock(stateMutex);
     this->conversationId = conversationId;
@@ -446,9 +424,6 @@ std::vector<std::string> AI::getModels()
         currentBaseUrl = baseUrl;
     }
 
-    if (currentApiKey.empty() || currentBaseUrl.empty())
-        THROW_EXCEPTION("API key or base URL not configured");
-
     std::vector<std::string> modelIds;
     Response response = Fetch::fetch(currentBaseUrl + "models",
                                      FetchOptions("GET",
@@ -456,14 +431,8 @@ std::vector<std::string> AI::getModels()
     if (!response.isOk())
         THROW_NETWORK_ERROR(response.status);
     nlohmann::json responseJson = response.json();
-    if (responseJson.contains("data") && responseJson["data"].is_array())
-    {
-        for (const auto &model : responseJson.at("data"))
-        {
-            if (model.contains("id") && model["id"].is_string())
-                modelIds.push_back(model.at("id"));
-        }
-    }
+    for (const auto &model : responseJson.at("data"))
+        modelIds.push_back(model.at("id"));
     return modelIds;
 }
 
@@ -476,26 +445,14 @@ float AI::getUserBalance()
         currentBaseUrl = baseUrl;
     }
 
-    if (currentApiKey.empty() || currentBaseUrl.empty())
-        THROW_EXCEPTION("API key or base URL not configured");
-
     Response response = Fetch::fetch(currentBaseUrl + "user/balance",
                                      FetchOptions("GET",
                                                   {{"Authorization", "Bearer " + currentApiKey}}));
     if (!response.isOk())
         THROW_NETWORK_ERROR(response.status);
     nlohmann::json responseJson = response.json();
-    if (responseJson.contains("balance_infos") && responseJson["balance_infos"].is_array())
-    {
-        for (const auto &balanceInfo : responseJson.at("balance_infos"))
-        {
-            if (balanceInfo.contains("currency") && balanceInfo["currency"].is_string() &&
-                balanceInfo.at("currency") == "CNY" &&
-                balanceInfo.contains("total_balance"))
-            {
-                return std::atof(std::string(balanceInfo.at("total_balance")).c_str());
-            }
-        }
-    }
+    for (const auto &balanceInfo : responseJson.at("balance_infos"))
+        if (balanceInfo.at("currency") == "CNY")
+            return std::atof(std::string(balanceInfo.at("total_balance")).c_str());
     return 0.0f;
 }

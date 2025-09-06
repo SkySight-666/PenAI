@@ -32,7 +32,7 @@ export declare class AI {
     static getModels(): Promise<string[]>;
     static getUserBalance(): Promise<number>;
 
-    static getConversationList(): Promise<langningchen.ConversationInfo[]>;
+    static getConversationList(): Promise<langningchen.ConversationNode[]>;
     static createConversation(title?: string): Promise<void>;
     static loadConversation(conversationId: string): Promise<void>;
     static deleteConversation(conversationId: string): Promise<void>;

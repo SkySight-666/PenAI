@@ -109,10 +109,9 @@ void JSAI::getCurrentNodeId(JQFunctionInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
-        info.GetReturnValue().Set(ai->getCurrentNodeId());
+        info.GetReturnValue().Set(AIObject->getCurrentNodeId());
     }
     catch (const std::exception &e)
     {
@@ -123,10 +122,9 @@ void JSAI::getRootNodeId(JQFunctionInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
-        info.GetReturnValue().Set(ai->getRootNodeId());
+        info.GetReturnValue().Set(AIObject->getRootNodeId());
     }
     catch (const std::exception &e)
     {
@@ -138,10 +136,7 @@ void JSAI::getCurrentConversationId(JQFunctionInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
-        ASSERT(info.Length() == 0);
-        info.GetReturnValue().Set(ai->getConversationId());
+        info.GetReturnValue().Set(AIObject->getConversationId());
     }
     catch (const std::exception &e)
     {
@@ -153,12 +148,11 @@ void JSAI::addUserMessage(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 1);
         ASSERT(info[0].is_string());
         std::string userMessage = info[0].string_value();
-        ai->addNode(ConversationNode::ROLE_USER, userMessage);
+        AIObject->addNode(ConversationNode::ROLE_USER, userMessage);
         info.post(true);
     }
     catch (const std::exception &e)
@@ -170,14 +164,13 @@ void JSAI::generateResponse(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
         AIStreamCallback callback = [this](const std::string &messageDelta)
         {
             publish("ai_stream", messageDelta);
         };
-        info.post(ai->generateResponse(callback));
+        info.post(AIObject->generateResponse(callback));
     }
     catch (const std::exception &e)
     {
@@ -203,11 +196,10 @@ void JSAI::getModels(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
         Bson::array modelsArray;
-        for (const auto &model : ai->getModels())
+        for (const auto &model : AIObject->getModels())
             modelsArray.push_back(model);
         info.post(modelsArray);
     }
@@ -220,10 +212,9 @@ void JSAI::getUserBalance(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
-        info.post(ai->getUserBalance());
+        info.post(AIObject->getUserBalance());
     }
     catch (const std::exception &e)
     {
@@ -235,11 +226,10 @@ void JSAI::getConversationList(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
         Bson::array conversationsArray;
-        auto response = ai->getConversationList();
+        auto response = AIObject->getConversationList();
         for (const auto &conv : response)
         {
             conversationsArray.push_back(Bson::object{
@@ -260,14 +250,13 @@ void JSAI::createConversation(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() <= 1);
         std::string title = "新对话";
         if (info.Length() == 1 && !info[0].string_value().empty())
             title = info[0].string_value();
         ASSERT(!title.empty());
-        ai->createConversation(title);
+        AIObject->createConversation(title);
         info.post(true);
     }
     catch (const std::exception &e)
@@ -280,12 +269,11 @@ void JSAI::loadConversation(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 1);
         ASSERT(info[0].is_string());
         std::string conversationId = info[0].string_value();
-        ai->loadConversation(conversationId);
+        AIObject->loadConversation(conversationId);
         info.post(true);
     }
     catch (const std::exception &e)
@@ -298,12 +286,11 @@ void JSAI::deleteConversation(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 1);
         ASSERT(info[0].is_string());
         std::string conversationId = info[0].string_value();
-        ai->deleteConversation(conversationId);
+        AIObject->deleteConversation(conversationId);
         info.post(true);
     }
     catch (const std::exception &e)
@@ -316,14 +303,13 @@ void JSAI::updateConversationTitle(JQAsyncInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 2);
         ASSERT(info[0].is_string());
         ASSERT(info[1].is_string());
         std::string conversationId = info[0].string_value();
         std::string title = info[1].string_value();
-        ai->updateConversationTitle(conversationId, title);
+        AIObject->updateConversationTitle(conversationId, title);
         info.post(true);
     }
     catch (const std::exception &e)
@@ -336,8 +322,7 @@ void JSAI::setSettings(JQFunctionInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 7);
         JSContext *ctx = info.GetContext();
         std::string apiKey = JQString(ctx, info[0]).getString();
@@ -348,7 +333,7 @@ void JSAI::setSettings(JQFunctionInfo &info)
         double topP = JQNumber(ctx, info[5]).getDouble();
         std::string systemPrompt = JQString(ctx, info[6]).getString();
 
-        ai->setSettings(apiKey, baseUrl, modelName, maxTokens, temperature, topP, systemPrompt);
+        AIObject->setSettings(apiKey, baseUrl, modelName, maxTokens, temperature, topP, systemPrompt);
         info.GetReturnValue().Set(true);
     }
     catch (const std::exception &e)
@@ -360,10 +345,9 @@ void JSAI::getSettings(JQFunctionInfo &info)
 {
     try
     {
-        AI *ai = getAIObject();
-        ASSERT(ai != nullptr);
+        ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
-        SettingsResponse settings = ai->getSettings();
+        SettingsResponse settings = AIObject->getSettings();
         info.GetReturnValue().Set(Bson::object{
             {"apiKey", settings.apiKey},
             {"baseUrl", settings.baseUrl},
