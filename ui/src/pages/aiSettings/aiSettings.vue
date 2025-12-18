@@ -21,16 +21,16 @@
     <div>
         <scroller class="container" scroll-direction="vertical" :show-scrollbar="true">
             <div class="section">
-                <text class="section-title">API配置</text>
+                <text class="section-title">API 配置</text>
 
                 <div class="item">
-                    <text class="item-text">API密钥</text>
+                    <text class="item-text">API 密钥</text>
                     <text class="item-input" @click="editApiKey">{{apiKey.split('').map(_ => '*').join('') ||
                         '点击输入API密钥'}}</text>
                 </div>
 
                 <div class="item">
-                    <text class="item-text">基础URL</text>
+                    <text class="item-text">基础 URL</text>
                     <text class="item-input" @click="editBaseUrl">{{ baseUrl || '点击输入基础URL' }}</text>
                 </div>
 
@@ -38,7 +38,7 @@
                     <text class="item-text">账户余额</text>
                     <text :class="'balance-text balance-' + (userBalance ? '' : 'un') + 'available'">{{
                         userBalance ? `¥${userBalance.toFixed(2)}` : '余额不可用'
-                        }}</text>
+                    }}</text>
                     <text @click="refreshBalance" class="btn btn-info">刷新</text>
                 </div>
             </div>
@@ -86,6 +86,7 @@
                 <text @click="saveSettings" class="btn btn-primary">保存</text>
             </div>
         </scroller>
+        <Loading />
         <ToastMessage />
     </div>
 </template>
@@ -96,10 +97,12 @@
 
 <script>
 import aiSettings from './aiSettings';
+import Loading from '../../components/Loading.vue';
 import ToastMessage from '../../components/ToastMessage.vue';
 export default {
     ...aiSettings,
     components: {
+        Loading,
         ToastMessage
     }
 };

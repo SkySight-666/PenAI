@@ -20,6 +20,7 @@
 #include "AI.hpp"
 #include <jqutil_v2/jqutil.h>
 #include <memory>
+#include <mutex>
 
 using namespace JQUTIL_NS;
 
@@ -27,6 +28,13 @@ class JSAI : public JQPublishObject
 {
 private:
     std::unique_ptr<AI> AIObject;
+    mutable std::mutex aiObjectMutex;
+
+    AI *getAIObject() const
+    {
+        std::lock_guard<std::mutex> lock(aiObjectMutex);
+        return AIObject.get();
+    }
 
 public:
     JSAI();
@@ -42,6 +50,7 @@ public:
 
     void addUserMessage(JQAsyncInfo &info);
     void generateResponse(JQAsyncInfo &info);
+    void stopGeneration(JQFunctionInfo &info);
     void getModels(JQAsyncInfo &info);
     void getUserBalance(JQAsyncInfo &info);
 

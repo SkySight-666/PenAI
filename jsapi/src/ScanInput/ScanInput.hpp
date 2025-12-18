@@ -17,23 +17,24 @@
 
 #pragma once
 
-#include "Includes.hpp"
-#include <vector>
+#include <jqutil_v2/jqutil.h>
+#include "Database/Database.hpp"
+#include "ScanInputCallback.hpp"
+#include <string>
+#include <thread>
 
-class DELETE
+class ScanInput
 {
 private:
-    sqlite3 *conn;
-    std::string tableName;
-    std::vector<std::pair<std::string, std::string>> conditions;
+    DATABASE database;
+
+    std::unique_ptr<std::thread> scanListenThread;
+    std::string lastString;
 
 public:
-    DELETE(sqlite3 *conn, std::string tableName);
-    [[nodiscard]] DELETE &where(std::string column, std::string value);
-    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-    [[nodiscard]] DELETE &where(std::string column, T data)
-    {
-        return where(column, std::to_string(data));
-    }
-    void execute() const;
+    bool initialized = false;
+
+    ScanInput();
+    void initialize(ScanInputCallback callback);
+    void deinitialize();
 };

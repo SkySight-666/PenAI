@@ -35,6 +35,7 @@ ConversationManager::ConversationManager() : database("/userdisk/database/langni
         .column("parent_id", TABLE::TEXT)
         .column("role", TABLE::INTEGER, TABLE::NOT_NULL)
         .column("content", TABLE::TEXT, TABLE::NOT_NULL)
+        .column("stop_reason", TABLE::INTEGER, TABLE::NOT_NULL)
         .column("created_at", TABLE::INTEGER, TABLE::NOT_NULL)
         .execute();
     database.table("api_settings")
@@ -51,6 +52,7 @@ ConversationManager::ConversationManager() : database("/userdisk/database/langni
 
 std::vector<ConversationInfo> ConversationManager::getConversationList()
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     std::vector<ConversationInfo> conversations;
     auto results = database.select("conversations")
                        .select("id")
@@ -70,6 +72,7 @@ std::vector<ConversationInfo> ConversationManager::getConversationList()
 
 void ConversationManager::createConversation(const std::string &title, std::string &outConversationId)
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     outConversationId = strUtils::randomId();
     auto currentTime = std::chrono::duration_cast<std::chrono::seconds>(
                            std::chrono::system_clock::now().time_since_epoch())
@@ -83,6 +86,7 @@ void ConversationManager::createConversation(const std::string &title, std::stri
 }
 void ConversationManager::deleteConversation(const std::string &conversationId)
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     database.remove("conversation_nodes")
         .where("conversation_id", conversationId)
         .execute();
@@ -92,6 +96,7 @@ void ConversationManager::deleteConversation(const std::string &conversationId)
 }
 void ConversationManager::updateConversationTitle(const std::string &conversationId, const std::string &title)
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     database.update("conversations")
         .set("title", title)
         .where("id", conversationId)
@@ -101,6 +106,7 @@ void ConversationManager::updateConversationTitle(const std::string &conversatio
 void ConversationManager::saveConversation(const std::string &conversationId,
                                            const std::unordered_map<std::string, std::unique_ptr<ConversationNode>> &nodeMap)
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     auto currentTime = std::chrono::duration_cast<std::chrono::seconds>(
                            std::chrono::system_clock::now().time_since_epoch())
                            .count();
@@ -124,8 +130,9 @@ void ConversationManager::saveConversation(const std::string &conversationId,
             .value("id", node->id)
             .value("conversation_id", conversationId)
             .value("parent_id", node->parentId)
-            .value("role", node->role)
+            .value("role", (int)node->role)
             .value("content", node->content)
+            .value("stop_reason", (int)node->stopReason)
             .value("created_at", currentTime)
             .execute();
     }
@@ -134,14 +141,11 @@ void ConversationManager::loadConversation(const std::string &conversationId,
                                            std::unordered_map<std::string, std::unique_ptr<ConversationNode>> &nodeMap,
                                            std::string &rootNodeId, std::string &leafNodeId)
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     nodeMap.clear();
     rootNodeId.clear();
 
     auto nodeResults = database.select("conversation_nodes")
-                           .select("id")
-                           .select("parent_id")
-                           .select("role")
-                           .select("content")
                            .where("conversation_id", conversationId)
                            .execute();
 
@@ -153,9 +157,10 @@ void ConversationManager::loadConversation(const std::string &conversationId,
         std::string parentId = row.at("parent_id");
         int role = std::stoi(row.at("role"));
         std::string content = row.at("content");
+        int stopReason = row.count("stop_reason") ? std::stoi(row.at("stop_reason")) : 6; // Default to STOP_REASON_NONE
 
         nodeMap[nodeId] = std::make_unique<ConversationNode>(
-            nodeId, static_cast<ConversationNode::ROLE>(role), content, parentId);
+            nodeId, static_cast<ConversationNode::ROLE>(role), content, parentId, static_cast<ConversationNode::STOP_REASON>(stopReason));
 
         if (!parentId.empty())
             parentToChildren[parentId].push_back(nodeId);
@@ -176,6 +181,7 @@ void ConversationManager::saveApiSettings(const std::string &apiKey, const std::
                                           const std::string &model, int maxTokens,
                                           double temperature, double topP, const std::string &systemPrompt)
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     database.remove("api_settings").execute();
     database.insert("api_settings")
         .value("id", "default")
@@ -188,10 +194,12 @@ void ConversationManager::saveApiSettings(const std::string &apiKey, const std::
         .value("system_prompt", systemPrompt)
         .execute();
 }
+
 void ConversationManager::loadApiSettings(std::string &apiKey, std::string &baseUrl,
                                           std::string &model, int &maxTokens,
                                           double &temperature, double &topP, std::string &systemPrompt)
 {
+    std::lock_guard<std::mutex> lock(dbMutex);
     auto results = database.select("api_settings")
                        .where("id", "default")
                        .execute();

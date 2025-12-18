@@ -17,23 +17,7 @@
 
 #pragma once
 
-#include "Includes.hpp"
-#include <vector>
+#include <string>
+#include <functional>
 
-class DELETE
-{
-private:
-    sqlite3 *conn;
-    std::string tableName;
-    std::vector<std::pair<std::string, std::string>> conditions;
-
-public:
-    DELETE(sqlite3 *conn, std::string tableName);
-    [[nodiscard]] DELETE &where(std::string column, std::string value);
-    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-    [[nodiscard]] DELETE &where(std::string column, T data)
-    {
-        return where(column, std::to_string(data));
-    }
-    void execute() const;
-};
+using ScanInputCallback = std::function<void(const std::string &data)>;

@@ -28,6 +28,7 @@ export declare class AI {
 
     static addUserMessage(message: string): Promise<void>;
     static generateResponse(): Promise<string>;
+    static stopGeneration(): void;
     static getModels(): Promise<string[]>;
     static getUserBalance(): Promise<number>;
 
@@ -40,7 +41,7 @@ export declare class AI {
     static setSettings(apiKey: string, baseUrl: string, modelName: string, maxTokens: number, temperature: number, topP: number, systemPrompt: string): void;
     static getSettings(): langningchen.SettingsResponse;
 
-    static on(event: 'ai_stream', callback: (data: langningchen.AIStreamResult) => void): void;
+    static on(event: 'ai_stream', callback: (data: string) => void): void;
 }
 
 export declare class IME {
@@ -48,4 +49,10 @@ export declare class IME {
     static getCandidates(rawPinyin: string): langningchen.Candidate[];
     static updateWordFrequency(pinyin: langningchen.Pinyin, hanZi: string): void;
     static splitPinyin(rawPinyin: string): langningchen.Pinyin;
+}
+
+export declare class ScanInput {
+    static initialize(): Promise<void>;
+    static deinitialize(): Promise<void>;
+    static on(event: 'scan_input', callback: (data: string) => void): void;
 }

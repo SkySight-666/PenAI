@@ -27,6 +27,7 @@ void JSAI::initialize(JQFunctionInfo &info)
     try
     {
         ASSERT(info.Length() == 0);
+        std::lock_guard<std::mutex> lock(aiObjectMutex);
         AIObject = std::make_unique<AI>();
         info.GetReturnValue().Set(true);
     }
@@ -39,15 +40,17 @@ void JSAI::getCurrentPath(JQFunctionInfo &info)
 {
     try
     {
-        ASSERT(AIObject != nullptr);
+        AI *ai = getAIObject();
+        ASSERT(ai != nullptr);
         ASSERT(info.Length() == 0);
-        std::vector<ConversationNode> path = AIObject->getCurrentPath();
+        std::vector<ConversationNode> path = ai->getCurrentPath();
         Bson::array result;
         for (const auto &msg : path)
         {
             Bson::object msgObj = {
                 {"id", msg.id},
                 {"role", msg.role},
+                {"stopReason", msg.stopReason},
                 {"content", msg.content},
                 {"parentId", msg.parentId},
                 {"timestamp", std::to_string(msg.timestamp)}};
@@ -68,12 +71,13 @@ void JSAI::getChildNodes(JQFunctionInfo &info)
 {
     try
     {
-        ASSERT(AIObject != nullptr);
+        AI *ai = getAIObject();
+        ASSERT(ai != nullptr);
         ASSERT(info.Length() == 1);
         JSContext *ctx = info.GetContext();
         std::string nodeId = JQString(ctx, info[0]).getString();
 
-        std::vector<std::string> childIds = AIObject->getChildren(nodeId);
+        std::vector<std::string> childIds = ai->getChildren(nodeId);
         Bson::array result;
         for (const auto &id : childIds)
             result.push_back(id);
@@ -88,12 +92,13 @@ void JSAI::switchToNode(JQFunctionInfo &info)
 {
     try
     {
-        ASSERT(AIObject != nullptr);
+        AI *ai = getAIObject();
+        ASSERT(ai != nullptr);
         ASSERT(info.Length() == 1);
         JSContext *ctx = info.GetContext();
         std::string nodeId = JQString(ctx, info[0]).getString();
 
-        info.GetReturnValue().Set(AIObject->switchNode(nodeId));
+        info.GetReturnValue().Set(ai->switchNode(nodeId));
     }
     catch (const std::exception &e)
     {
@@ -161,18 +166,30 @@ void JSAI::generateResponse(JQAsyncInfo &info)
     {
         ASSERT(AIObject != nullptr);
         ASSERT(info.Length() == 0);
-        AIStreamCallback callback = [this](AIStreamResult result)
+        AIStreamCallback callback = [this](const std::string &messageDelta)
         {
-            publish("ai_stream", Bson::object{
-                                     {"type", result.type},
-                                     {"messageDelta", result.messageDelta},
-                                     {"errorMessage", result.errorMessage}});
+            publish("ai_stream", messageDelta);
         };
         info.post(AIObject->generateResponse(callback));
     }
     catch (const std::exception &e)
     {
         info.postError(e.what());
+    }
+}
+void JSAI::stopGeneration(JQFunctionInfo &info)
+{
+    try
+    {
+        AI *ai = getAIObject();
+        ASSERT(ai != nullptr);
+        ASSERT(info.Length() == 0);
+        ai->stopGeneration();
+        info.GetReturnValue().Set(true);
+    }
+    catch (const std::exception &e)
+    {
+        info.GetReturnValue().ThrowInternalError(e.what());
     }
 }
 void JSAI::getModels(JQAsyncInfo &info)
@@ -362,6 +379,7 @@ extern JSValue createAI(JQModuleEnv *env)
 
     tpl->SetProtoMethodPromise("addUserMessage", &JSAI::addUserMessage);
     tpl->SetProtoMethodPromise("generateResponse", &JSAI::generateResponse);
+    tpl->SetProtoMethod("stopGeneration", &JSAI::stopGeneration);
     tpl->SetProtoMethodPromise("getModels", &JSAI::getModels);
     tpl->SetProtoMethodPromise("getUserBalance", &JSAI::getUserBalance);
 

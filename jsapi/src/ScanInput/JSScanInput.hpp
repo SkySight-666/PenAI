@@ -17,23 +17,24 @@
 
 #pragma once
 
-#include "Includes.hpp"
-#include <vector>
+#include <jqutil_v2/jqutil.h>
+#include <memory>
+#include <thread>
+#include "ScanInput.hpp"
 
-class DELETE
+using namespace JQUTIL_NS;
+
+class JSSCAN_INPUT : public JQPublishObject
 {
 private:
-    sqlite3 *conn;
-    std::string tableName;
-    std::vector<std::pair<std::string, std::string>> conditions;
+    std::unique_ptr<ScanInput> ScanInputObject;
 
 public:
-    DELETE(sqlite3 *conn, std::string tableName);
-    [[nodiscard]] DELETE &where(std::string column, std::string value);
-    template <typename T, std::enable_if_t<std::is_arithmetic_v<T>, int> = 0>
-    [[nodiscard]] DELETE &where(std::string column, T data)
-    {
-        return where(column, std::to_string(data));
-    }
-    void execute() const;
+    JSSCAN_INPUT();
+    ~JSSCAN_INPUT();
+
+    void initialize(JQAsyncInfo &info);
+    void deinitialize(JQAsyncInfo &info);
 };
+
+extern JSValue createScanInput(JQModuleEnv *env);
